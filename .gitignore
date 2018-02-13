@@ -1,0 +1,7 @@
+#.gitignore
+
+.idea/
+.work_data/
+vendor/
+
+composer.phar
