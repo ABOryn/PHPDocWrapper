@@ -1,0 +1,11 @@
+{
+  "name": "PHPDocWrapper",
+  "require": {
+    "phpdocumentor/phpdocumentor": "2.*"
+  },
+  "autoload": {
+    "classmap": [
+      "classes/"
+    ]
+  }
+}
