@@ -1,22 +1,38 @@
 <?php
+/**
+ * Основной функционал приложения
+ *
+ * @author ABOryn
+ */
 
+/**
+ * Класс App
+ */
 class App
 {
+    /** Константа с параметрами по умолчанию */
     const DEFAULT_CONFIG = [
-        'title' => 'Документация PHP проекта', // поддерживаются html-теги
-        'template' => 'clear,checkstyle',
-        'include' => [
+        'title' => 'Документация PHP проекта',
+        'encoding' => 'utf8',
+        'extensions' => 'php', // перечисление через запятую
+        'templates' => 'responsive-twig', // возможно использовать сразу несколько, перечислив через запятую
+        'include' => [ // все пути считаются относительными, относительно директории документируемого проекта
             'files' => [],
             'dirs' => [],
         ],
-        'exclude' => [
+        'exclude' => [ // все пути считаются относительными, относительно директории документируемого проекта
             'files' => [],
             'dirs' => [],
         ],
     ];
 
+    /** @var array $config параметры */
     private $config;
+
+    /** @var bool|string $source_path директория с документируемыми скриптами */
     private $source_path;
+
+    /** @var bool|string $destination_path директория назначения, куда будут добавлены результаты работы */
     private $destination_path;
 
     /**
@@ -65,26 +81,24 @@ class App
     {
         $config_file_name = $this->prepareConfigFile();
 
-//        $cmd = "phpdoc";
-//        if ($config_file_name != '') {
-//            $cmd .= " -c \"$config_file_name\"";
-//        }
+        $cmd = ROOT_DIR . "vendor/bin/phpdoc -c \"$config_file_name\"";
 
-//        $cmd .= " --template=\"" . implode(',',
-//                (isset($config['template'])) ? $config['template'] : self::DEFAULT_CONFIG['template']
-//            ) . "\"";
-//
+        Console::info("Запуск phpDoc:");
+        passthru($cmd);
+        Console::info("Завершение phpDoc.");
 
         if (file_exists($config_file_name)) {
-//            unlink($config_file_name); ///////////////////////////////////////////////////////////////////////////////
+            unlink($config_file_name);
             Console::info("Временный файл конфигурации \33[33m$config_file_name\33[m успешно удалён.");
         }
     }
 
     /**
-     * Создаёт файл с конфигурацией для phpDocumentor
+     * Создаёт xml-файл с конфигурацией для phpDocumentor
      *
-     * @return string
+     * @return string имя xml-файла с конфигурацией
+     *
+     * @todo разобраться с логированием работы phpDoc
      */
     private function prepareConfigFile()
     {
@@ -104,55 +118,86 @@ class App
 
 
         $xml = new DOMDocument('1.0', 'UTF-8');
-//        $xml->load(ROOT_DIR . "config_template.xml", LIBXML_NOBLANKS);
-        $xml->formatOutput = true; // иначе будет в одну строку ////////////////////////////////////////////////////////
+//        $xml->formatOutput = true; // без этой настройки будет создан xml-документ в одну строку
 
         // корневой элемент xml-документа
-        $root = $xml->createElement('phpdoc');
-        $xml->appendChild($root);
-//        $root = $xml->getElementsByTagName('phpdoc');
-//        if ($root->length !== 1) {
-//            Console::fatalError("Ошибка в структуре шаблона файла конфигурации \33[33m"
-//                . ROOT_DIR . "config_template.xml\33[m.");
-//        }
-//        $root = $root->item(0);
+        $root = $xml->appendChild($xml->createElement('phpdoc'));
 
-        // настройки логирования phpDoc (по умолчанию ничего не логируется)
-        $logging = $xml->createElement('logging');
-        $logging = $root->appendChild($logging);
-        $level = $xml->createElement('level');
-        $level->nodeValue = "debug";
-        $logging->appendChild($level);
-        $paths = $logging->appendChild($xml->createElement('paths'));
-        $default = $xml->createElement('default');
-        $default->nodeValue = "{APP_ROOT}/log/" . basename($this->destination_path) . ".log";
-        $paths->appendChild($default);
-        $errors = $xml->createElement('errors');
-        $errors->nodeValue = "{APP_ROOT}/log/" . basename($this->destination_path) . "_errors.log";
-        $paths->appendChild($errors);
+        // заголовок (логотип/текст), определяющий документируемый проект
+        $title = $root->appendChild($xml->createElement('title'));
+        $title->nodeValue = $this->config['title'];
 
-        // шаблон
-        $transformations = $xml->createElement('transformations');
-        $root->appendChild($transformations);
-        if (!isset($this->config['template']) || empty(trim($this->config['template']))) {
-            $this->config['template'] = "clear";
+        // параметры парсера
+        $parser = $root->appendChild($xml->createElement('parser'));
+        $encoding = $parser->appendChild($xml->createElement('encoding'));
+        $encoding->nodeValue = $this->config['encoding'];
+        $extensions = $parser->appendChild($xml->createElement('extensions'));
+        foreach (explode(',', $this->config['extensions']) as $extension_item) {
+            $extension = $extensions->appendChild($xml->createElement('extension'));
+            $extension->nodeValue = $extension_item;
         }
-        foreach (explode(',', $this->config['template']) as $template_name) {
-            $template = $xml->createElement('template');
-            $template->setAttribute('name', $template_name);
-            $transformations->appendChild($template);
-        }
-
 
         // директория назначения
-        $transformer = $xml->createElement('transformer');
-        $root->appendChild($transformer);
-        $target = $xml->createElement('target');
+        $transformer = $root->appendChild($xml->createElement('transformer'));
+        $target = $transformer->appendChild($xml->createElement('target'));
         $target->nodeValue = trim($this->destination_path);
-        $transformer->appendChild($target);
+
+        // шаблон
+        $transformations = $root->appendChild($xml->createElement('transformations'));
+        foreach (explode(',', $this->config['templates']) as $template_name) {
+            $template = $xml->createElement('template');
+            $transformations->appendChild($template);
+            $template->setAttribute('name', trim($template_name));
+        }
+
+//        // логирование действий phpDoc (по умолчанию ничего не логируется, НЕ РАБОТАЕТ)
+//        $logging = $root->appendChild($xml->createElement('logging'));
+//        $level = $logging->appendChild($xml->createElement('level'));
+//        $level->nodeValue = "debug";
+//        $paths = $logging->appendChild($xml->createElement('paths'));
+//        $default = $paths->appendChild($xml->createElement('default'));
+//        $default->nodeValue = ROOT_DIR . "log/" . basename($this->destination_path) . ".log";
+//        $errors = $paths->appendChild($xml->createElement('errors'));
+//        $errors->nodeValue = ROOT_DIR . "log/" . basename($this->destination_path) . "_errors.log";
+
+        // уточнение конкретных документируемых файл-скриптов (директорий)
+        $files = $root->appendChild($xml->createElement('files'));
+        if ((
+                !empty($this->config['include'])
+                && !empty($this->config['include']['files']) && !empty($this->config['include']['dirs'])
+            ) || (
+                !empty($this->config['exclude'])
+                && !empty($this->config['exclude']['files']) && !empty($this->config['exclude']['dirs'])
+            )
+        ) {
+            Console::info("!!!");
+            if (!empty($this->config['include'])) {
+                foreach ($this->config['include']['files'] as $file_name) {
+                    $file = $files->appendChild($xml->createElement('file'));
+                    $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                }
+                foreach ($this->config['include']['dirs'] as $dir_name) {
+                    $dir = $files->appendChild($xml->createElement('directory'));
+                    $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name);
+                }
+            }
+            if (!empty($this->config['exclude'])) {
+                foreach ($this->config['exclude']['files'] as $file_name) {
+                    $file = $files->appendChild($xml->createElement('ignore'));
+                    $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                }
+                foreach ($this->config['exclude']['dirs'] as $dir_name) {
+                    $dir = $files->appendChild($xml->createElement('ignore'));
+                    $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name) . "/*";
+                }
+            }
+        } else {
+            $dir = $files->appendChild($xml->createElement('directory'));
+            $dir->nodeValue = $this->source_path;
+        }
 
 
-//        // убиваем коментарии (не обязательное действие, можно закоментировать/удалить)
+//        // убиваем коментарии
 //        $xpath = new DOMXPath($xml);
 //        foreach ($xpath->query('//comment()') as $comment) {
 //            $comment->parentNode->removeChild($comment);
