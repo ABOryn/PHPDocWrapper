@@ -15,7 +15,8 @@ class App
         'title' => 'Документация PHP проекта',
         'encoding' => 'utf8',
         'extensions' => 'php', // перечисление через запятую
-        'templates' => 'responsive-twig', // возможно использовать сразу несколько, перечислив через запятую
+        'templates' => ROOT_DIR . 'templates/ru-responsive-twig/',
+//        'templates' => 'responsive-twig', // возможно использовать сразу несколько, перечислив через запятую
         'include' => [ // все пути считаются относительными, относительно директории документируемого проекта
             'files' => [],
             'dirs' => [],
@@ -69,7 +70,7 @@ class App
             $config = include "$this->source_path/config_doc.php";
         } elseif (file_exists("$this->source_path/config/doc.php")) {
             /** @noinspection PhpIncludeInspection */
-            $config = include "$this->source_path/config_doc.php";
+            $config = include "$this->source_path/config/doc.php";
         }
         $this->config = array_merge(self::DEFAULT_CONFIG, $config);
     }
@@ -88,7 +89,7 @@ class App
         Console::info("Завершение phpDoc.");
 
         if (file_exists($config_file_name)) {
-            unlink($config_file_name);
+//            unlink($config_file_name);
             Console::info("Временный файл конфигурации \33[33m$config_file_name\33[m успешно удалён.");
         }
     }
@@ -150,45 +151,48 @@ class App
             $template->setAttribute('name', trim($template_name));
         }
 
-//        // логирование действий phpDoc (по умолчанию ничего не логируется, НЕ РАБОТАЕТ)
+//        // вывод в консоль более подробного лога действий phpDoc
 //        $logging = $root->appendChild($xml->createElement('logging'));
 //        $level = $logging->appendChild($xml->createElement('level'));
 //        $level->nodeValue = "debug";
-//        $paths = $logging->appendChild($xml->createElement('paths'));
-//        $default = $paths->appendChild($xml->createElement('default'));
-//        $default->nodeValue = ROOT_DIR . "log/" . basename($this->destination_path) . ".log";
-//        $errors = $paths->appendChild($xml->createElement('errors'));
-//        $errors->nodeValue = ROOT_DIR . "log/" . basename($this->destination_path) . "_errors.log";
 
         // уточнение конкретных документируемых файл-скриптов (директорий)
         $files = $root->appendChild($xml->createElement('files'));
         if ((
                 !empty($this->config['include'])
-                && !empty($this->config['include']['files']) && !empty($this->config['include']['dirs'])
+                && (!empty($this->config['include']['files']) || !empty($this->config['include']['dirs']))
             ) || (
                 !empty($this->config['exclude'])
-                && !empty($this->config['exclude']['files']) && !empty($this->config['exclude']['dirs'])
+                && (!empty($this->config['exclude']['files']) || !empty($this->config['exclude']['dirs']))
             )
         ) {
-            Console::info("!!!");
+//            Console::info("!!!");
             if (!empty($this->config['include'])) {
-                foreach ($this->config['include']['files'] as $file_name) {
-                    $file = $files->appendChild($xml->createElement('file'));
-                    $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                if (isset($this->config['include']['files']) && (is_array($this->config['include']['files']))) {
+                    foreach ($this->config['include']['files'] as $file_name) {
+                        $file = $files->appendChild($xml->createElement('file'));
+                        $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                    }
                 }
-                foreach ($this->config['include']['dirs'] as $dir_name) {
-                    $dir = $files->appendChild($xml->createElement('directory'));
-                    $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name);
+                if (isset($this->config['include']['dirs']) && (is_array($this->config['include']['dirs']))) {
+                    foreach ($this->config['include']['dirs'] as $dir_name) {
+                        $dir = $files->appendChild($xml->createElement('directory'));
+                        $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name);
+                    }
                 }
             }
             if (!empty($this->config['exclude'])) {
-                foreach ($this->config['exclude']['files'] as $file_name) {
-                    $file = $files->appendChild($xml->createElement('ignore'));
-                    $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                if (isset($this->config['exclude']['files']) && (is_array($this->config['exclude']['files']))) {
+                    foreach ($this->config['exclude']['files'] as $file_name) {
+                        $file = $files->appendChild($xml->createElement('ignore'));
+                        $file->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($file_name);
+                    }
                 }
-                foreach ($this->config['exclude']['dirs'] as $dir_name) {
-                    $dir = $files->appendChild($xml->createElement('ignore'));
-                    $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name) . "/*";
+                if (isset($this->config['exclude']['dirs']) && (is_array($this->config['exclude']['dirs']))) {
+                    foreach ($this->config['exclude']['dirs'] as $dir_name) {
+                        $dir = $files->appendChild($xml->createElement('ignore'));
+                        $dir->nodeValue = $this->source_path . DIRECTORY_SEPARATOR . trim($dir_name) . "/*";
+                    }
                 }
             }
         } else {
