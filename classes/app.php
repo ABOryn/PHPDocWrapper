@@ -15,7 +15,7 @@ class App
         'title' => 'Документация PHP проекта',
         'encoding' => 'utf8',
         'extensions' => 'php', // перечисление через запятую
-        'templates' => ROOT_DIR . 'templates/ru-responsive-twig/',
+        'templates' => ROOT_DIR . 'templates/responsive-twig/',
 //        'templates' => 'responsive-twig', // возможно использовать сразу несколько, перечислив через запятую
         'include' => [ // все пути считаются относительными, относительно директории документируемого проекта
             'files' => [],
